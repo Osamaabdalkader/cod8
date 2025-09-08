@@ -69,6 +69,17 @@ try {
   console.error("Firebase initialization error:", error);
 }
 
+
+
+
+
+
+
+
+
+// firebase.js - الأجزاء المعدلة والمضافة
+// ... (الكود الأصلي يبقى كما هو حتى جزء التصدير)
+
 // دالة للتحقق من الترقيات
 const checkPromotions = async (userId) => {
   try {
@@ -117,9 +128,9 @@ const checkPromotions = async (userId) => {
 };
 
 // التحقق من ترقية المُحيل بناءً على ترقية أحد أفراد الفريق
-const checkTeamPromotions = async (referrerId, teamMemberRank) => {
+const checkTeamPromotions = async (referrerId, triggeredRank = null) => {
   try {
-    console.log(`التحقق من ترقيات فريق المستخدم: ${referrerId}, مرتبة العضو: ${teamMemberRank}`);
+    console.log(`التحقق من ترقيات فريق المستخدم: ${referrerId}, المرتبة المحفزة: ${triggeredRank}`);
     
     const referrerRef = ref(database, 'users/' + referrerId);
     const referrerSnapshot = await get(referrerRef);
@@ -129,12 +140,20 @@ const checkTeamPromotions = async (referrerId, teamMemberRank) => {
     
     const currentRank = referrerData.rank || 0;
     
+    // إذا كانت المرتبة الحالية هي الأعلى، لا داعي للتحقق
+    if (currentRank >= 10) return;
+    
     console.log(`مرتبة المحيل الحالية: ${currentRank}`);
     
     // التحقق من جميع المراتب الممكنة للترقية
     for (let targetRank = currentRank + 1; targetRank <= 10; targetRank++) {
       // المرتبة المطلوبة للفريق هي targetRank - 1
       const requiredTeamRank = targetRank - 1;
+      
+      // إذا كانت هناك مرتبة محفزة والمرتبة المطلوبة أعلى من المحفزة، تخطى
+      if (triggeredRank && requiredTeamRank > triggeredRank) {
+        continue;
+      }
       
       // الحصول على جميع أفراد الفريق
       const teamRef = ref(database, 'userReferrals/' + referrerId);
@@ -147,9 +166,9 @@ const checkTeamPromotions = async (referrerId, teamMemberRank) => {
       
       const teamMembers = teamSnapshot.val();
       let qualifiedMembers = 0;
+      const qualifiedMembersList = [];
       
       console.log(`التحقق من ترقية إلى المرتبة ${targetRank}, يتطلب فريقًا بمرتبة ${requiredTeamRank} على الأقل`);
-      console.log(`عدد أفراد الفريق: ${Object.keys(teamMembers).length}`);
       
       // التحقق من عدد أفراد الفريق الذين حققوا المرتبة المطلوبة
       for (const memberId in teamMembers) {
@@ -162,6 +181,7 @@ const checkTeamPromotions = async (referrerId, teamMemberRank) => {
           
           if (memberRank >= requiredTeamRank) {
             qualifiedMembers++;
+            qualifiedMembersList.push({id: memberId, rank: memberRank});
             console.log(`عضو مؤهل: ${memberId} (المرتبة ${memberRank})`);
           }
         }
@@ -170,6 +190,7 @@ const checkTeamPromotions = async (referrerId, teamMemberRank) => {
       // إذا كان هناك 3 أفراد مؤهلين، ترقية المُحيل
       if (qualifiedMembers >= 3) {
         console.log(`تم العثور على ${qualifiedMembers} أعضاء مؤهلين للترقية إلى المرتبة ${targetRank}`);
+        console.log('الأعضاء المؤهلون:', qualifiedMembersList);
         
         await update(referrerRef, {
           rank: targetRank,
@@ -221,11 +242,42 @@ const addPointsAndCheckPromotion = async (userId, pointsToAdd) => {
   }
 };
 
+// دالة للاستماع لتغيرات مراتب أعضاء الفريق والتحقق من الترقيات
+const setupRankChangeListener = async (userId) => {
+  try {
+    // الحصول على فريق المستخدم
+    const teamRef = ref(database, 'userReferrals/' + userId);
+    const teamSnapshot = await get(teamRef);
+    
+    if (!teamSnapshot.exists()) return;
+    
+    const teamMembers = teamSnapshot.val();
+    
+    // الاستماع لتغيرات المرتبة لكل عضو في الفريق
+    for (const memberId in teamMembers) {
+      const memberRankRef = ref(database, 'users/' + memberId + '/rank');
+      
+      onValue(memberRankRef, async (snapshot) => {
+        if (snapshot.exists()) {
+          const newRank = snapshot.val();
+          console.log(`تغيرت مرتبة العضو ${memberId} إلى ${newRank}`);
+          
+          // التحقق من إمكانية ترقية المستخدم
+          await checkTeamPromotions(userId, newRank);
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error setting up rank change listener:", error);
+  }
+};
+
 // تصدير الكائنات لاستخدامها في ملفات أخرى
 export { 
   app, analytics, auth, database, storage,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,
   ref, set, push, onValue, serverTimestamp, update, remove, query, orderByChild, equalTo, get, child,
   storageRef, uploadBytesResumable, getDownloadURL,
-  checkPromotions, checkTeamPromotions, addPointsAndCheckPromotion
+  checkPromotions, checkTeamPromotions, addPointsAndCheckPromotion, setupRankChangeListener
 };
+
