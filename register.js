@@ -50,12 +50,7 @@ class RegisterManager {
   async processReferral(referralCode, newUserId, name, email) {
     try {
       const referrerId = await this.getUserIdFromReferralCode(referralCode);
-      if (!referrerId) {
-        console.log("لم يتم العثور على صاحب رمز الإحالة");
-        return;
-      }
-      
-      console.log(`تم العثور على صاحب رمز الإحالة: ${referrerId}`);
+      if (!referrerId) return;
       
       await set(ref(database, `userReferrals/${referrerId}/${newUserId}`), {
         name: name,
@@ -63,8 +58,6 @@ class RegisterManager {
         joinDate: new Date().toISOString(),
         level: 1
       });
-      
-      console.log(`تم إضافة العضو الجديد ${newUserId} إلى فريق ${referrerId}`);
       
       // استخدام الدالة الجديدة لإضافة النقاط والتحقق من الترقية
       await addPointsAndCheckPromotion(referrerId, 10);
@@ -113,11 +106,8 @@ class RegisterManager {
       // حفظ رمز الإحالة للبحث السريع
       await set(ref(database, 'referralCodes/' + userReferralCode), userId);
       
-      console.log(`تم إنشاء حساب جديد: ${userId} مع رمز إحالة: ${userReferralCode}`);
-      
       // إذا كان هناك رمز إحالة، إضافة العلاقة
       if (referralCode) {
-        console.log(`معالجة الإحالة باستخدام الرمز: ${referralCode}`);
         await this.processReferral(referralCode, userId, name, email);
       }
       
@@ -129,7 +119,6 @@ class RegisterManager {
       }, 1000);
       
     } catch (error) {
-      console.error("Error creating account:", error);
       authManager.showAlert(alert, 'error', error.message);
     }
   }
