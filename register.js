@@ -47,6 +47,16 @@ class RegisterManager {
     }
   }
 
+
+
+
+
+
+
+
+
+  // ... (الكود الأصلي يبقى كما هو حتى processReferral)
+
   async processReferral(referralCode, newUserId, name, email) {
     try {
       const referrerId = await this.getUserIdFromReferralCode(referralCode);
@@ -61,6 +71,9 @@ class RegisterManager {
       
       // استخدام الدالة الجديدة لإضافة النقاط والتحقق من الترقية
       await addPointsAndCheckPromotion(referrerId, 10);
+      
+      // بدء الاستماع لتغيرات مرتبة العضو الجديد
+      await setupRankChangeListener(referrerId);
       
     } catch (error) {
       console.error("Error processing referral:", error);
@@ -95,7 +108,7 @@ class RegisterManager {
         email: email,
         referralCode: userReferralCode,
         points: 0,
-        rank: 0,
+        rank: 0, // إضافة حقل المرتبة وتهيئته إلى 0
         joinDate: new Date().toISOString(),
         referredBy: referralCode || null
       });
@@ -125,3 +138,4 @@ class RegisterManager {
 document.addEventListener('DOMContentLoaded', () => {
   new RegisterManager();
 });
+  
