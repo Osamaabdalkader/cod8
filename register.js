@@ -100,7 +100,8 @@ class RegisterManager {
         referralCode: userReferralCode,
         points: 0,
         joinDate: new Date().toISOString(),
-        referredBy: referralCode || null
+        referredBy: referralCode || null,
+        rank: 0 // إضافة المرتبة الابتدائية
       });
       
       // حفظ رمز الإحالة للبحث السريع
