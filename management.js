@@ -57,12 +57,14 @@ class ManagementManager {
         
         if (userData) {
           const referralsCount = await this.loadReferralsCount(userId);
+          const rankTitles = ["مبتدئ", "عضو", "عضو متميز", "عضو نشيط", "عضو فعال", "عضو برونزي", "عضو فضي", "عضو ذهبي", "عضو بلاتيني", "عضو ماسي", "قائد"];
+          const userRank = userData.rank || 0;
           
           const row = membersTable.insertRow();
           row.innerHTML = `
             <td>${userData.name}</td>
             <td>${userData.email}</td>
-            <td><span class="user-badge level-0">مستوى 1</span></td>
+            <td><span class="user-badge level-${userRank}">${rankTitles[userRank]} (${userRank})</span></td>
             <td>${new Date(userData.joinDate).toLocaleDateString('ar-SA')}</td>
             <td>${referralsCount}</td>
             <td>${userData.points || 0}</td>
