@@ -48,6 +48,58 @@ class DashboardManager {
     
     // تحميل عدد الإحالات
     this.loadReferralsCount(auth.currentUser.uid);
+    // تحميل معلومات المرتبة
+    this.loadRankInfo();
+  }
+
+  // تحميل معلومات المرتبة
+  async loadRankInfo() {
+    try {
+      const rankInfoElement = document.getElementById('rank-info');
+      if (!rankInfoElement) return;
+      
+      const rankTitles = [
+        "مبتدئ", "عضو", "عضو متميز", "عضو نشيط", "عضو فعال",
+        "عضو برونزي", "عضو فضي", "عضو ذهبي", "عضو بلاتيني", "عضو ماسي", "قائد"
+      ];
+      
+      const nextRankRequirements = [
+        "تجميع 100 نقطة للترقية إلى العضو",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو متميز",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو نشيط",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو فعال",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو برونزي",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو فضي",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو ذهبي",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو بلاتيني",
+        "3 أعضاء من فريقك يجب أن يصلوا إلى مرتبة عضو ماسي",
+        "أنت في أعلى مرتبة!"
+      ];
+      
+      const currentRank = this.userData.rank || 0;
+      const nextRank = currentRank < 10 ? currentRank + 1 : 10;
+      
+      rankInfoElement.innerHTML = `
+        <div class="rank-card">
+          <h3>مرتبتك الحالية</h3>
+          <div class="current-rank">
+            <span class="rank-title">${rankTitles[currentRank]}</span>
+            <span class="rank-level">المرتبة ${currentRank}</span>
+          </div>
+          <div class="next-rank">
+            <h4>الترقية القادمة: ${rankTitles[nextRank]}</h4>
+            <p>${nextRankRequirements[currentRank]}</p>
+            ${currentRank === 0 ? `<div class="progress-bar">
+              <div class="progress" style="width: ${Math.min((this.userData.points || 0) / 100 * 100, 100)}%"></div>
+              <span>${this.userData.points || 0} / 100 نقطة</span>
+            </div>` : ''}
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      console.error("Error loading rank info:", error);
+    }
   }
 
   async loadReferralsCount(userId) {
