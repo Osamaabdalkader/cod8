@@ -1,6 +1,6 @@
 // register.js
 import { auth, createUserWithEmailAndPassword } from './firebase.js';
-import { database, ref, set, get, child } from './firebase.js';
+import { database, ref, set, get, child, update } from './firebase.js';
 import { addPointsAndCheckPromotion, setupRankChangeListener } from './firebase.js';
 import { authManager } from './auth.js';
 
