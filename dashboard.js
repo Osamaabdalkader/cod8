@@ -1,7 +1,7 @@
 // dashboard.js
 import { auth, database, ref, get, onValue } from './firebase.js';
-import { authManager } from './auth.js';
 import { checkPromotions } from './firebase.js';
+import { authManager } from './auth.js';
 
 class DashboardManager {
   constructor() {
@@ -28,7 +28,6 @@ class DashboardManager {
       if (this.userData) {
         this.updateUserUI();
         this.loadRecentReferrals(userId);
-        this.loadRankInfo();
       }
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -50,6 +49,8 @@ class DashboardManager {
     
     // تحميل عدد الإحالات
     this.loadReferralsCount(auth.currentUser.uid);
+    // تحميل معلومات المرتبة
+    this.loadRankInfo();
   }
 
   async loadReferralsCount(userId) {
