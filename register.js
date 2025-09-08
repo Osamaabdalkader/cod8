@@ -1,8 +1,8 @@
 // register.js
 import { auth, createUserWithEmailAndPassword } from './firebase.js';
 import { database, ref, set, get, child, update } from './firebase.js';
-import { authManager } from './auth.js';
 import { addPointsAndCheckPromotion } from './firebase.js';
+import { authManager } from './auth.js';
 
 class RegisterManager {
   constructor() {
@@ -95,7 +95,7 @@ class RegisterManager {
         email: email,
         referralCode: userReferralCode,
         points: 0,
-        rank: 0, // إضافة حقل المرتبة
+        rank: 0,
         joinDate: new Date().toISOString(),
         referredBy: referralCode || null
       });
