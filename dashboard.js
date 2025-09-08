@@ -1,5 +1,5 @@
 // dashboard.js
-import { auth, database, ref, get, onValue } from './firebase.js';
+import { auth, database, ref, get, onValue, update } from './firebase.js';
 import { checkPromotions, setupRankChangeListener } from './firebase.js';
 import { authManager } from './auth.js';
 
@@ -10,16 +10,21 @@ class DashboardManager {
   }
 
   async init() {
-    const user = await authManager.init();
-    if (user) {
-      await this.loadUserData(user.uid);
-      this.setupEventListeners();
-      this.setupSocialShare();
-      
-      // بدء الاستماع لتغيرات المرتبة
-      await this.setupRankListener(user.uid);
-    } else {
-      window.location.href = 'index.html';
+    try {
+      const user = await authManager.init();
+      if (user) {
+        authManager.updateAuthUI(true);
+        await this.loadUserData(user.uid);
+        this.setupEventListeners();
+        this.setupSocialShare();
+        
+        // بدء الاستماع لتغيرات المرتبة
+        await this.setupRankListener(user.uid);
+      } else {
+        window.location.href = 'index.html';
+      }
+    } catch (error) {
+      console.error("Error initializing dashboard:", error);
     }
   }
 
@@ -31,6 +36,8 @@ class DashboardManager {
       if (this.userData) {
         this.updateUserUI();
         this.loadRecentReferrals(userId);
+      } else {
+        console.error("No user data found");
       }
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -38,29 +45,36 @@ class DashboardManager {
   }
 
   updateUserUI() {
-    const usernameEl = document.getElementById('username');
-    const userAvatar = document.getElementById('user-avatar');
-    const pointsCount = document.getElementById('points-count');
-    const joinDate = document.getElementById('join-date');
-    const referralLink = document.getElementById('referral-link');
-    
-    if (usernameEl) usernameEl.textContent = this.userData.name;
-    if (userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(this.userData.name)}&background=random`;
-    if (pointsCount) pointsCount.textContent = this.userData.points || '0';
-    if (joinDate) joinDate.textContent = new Date(this.userData.joinDate).toLocaleDateString('ar-SA');
-    if (referralLink) referralLink.value = `${window.location.origin}${window.location.pathname}?ref=${this.userData.referralCode}`;
-    
-    // تحميل عدد الإحالات
-    this.loadReferralsCount(auth.currentUser.uid);
-    // تحميل معلومات المرتبة
-    this.loadRankInfo();
+    try {
+      const usernameEl = document.getElementById('username');
+      const userAvatar = document.getElementById('user-avatar');
+      const pointsCount = document.getElementById('points-count');
+      const joinDate = document.getElementById('join-date');
+      const referralLink = document.getElementById('referral-link');
+      
+      if (usernameEl) usernameEl.textContent = this.userData.name;
+      if (userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(this.userData.name)}&background=random`;
+      if (pointsCount) pointsCount.textContent = this.userData.points || '0';
+      if (joinDate) joinDate.textContent = new Date(this.userData.joinDate).toLocaleDateString('ar-SA');
+      if (referralLink) referralLink.value = `${window.location.origin}${window.location.pathname}?ref=${this.userData.referralCode}`;
+      
+      // تحميل عدد الإحالات
+      this.loadReferralsCount(auth.currentUser.uid);
+      // تحميل معلومات المرتبة
+      this.loadRankInfo();
+    } catch (error) {
+      console.error("Error updating UI:", error);
+    }
   }
 
   async loadReferralsCount(userId) {
     try {
       const snapshot = await get(ref(database, 'userReferrals/' + userId));
       const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
-      document.getElementById('referrals-count').textContent = count;
+      const referralsCountElement = document.getElementById('referrals-count');
+      if (referralsCountElement) {
+        referralsCountElement.textContent = count;
+      }
     } catch (error) {
       console.error("Error loading referrals count:", error);
     }
@@ -73,27 +87,31 @@ class DashboardManager {
         const referralsTable = document.getElementById('recent-referrals');
         
         if (!snapshot.exists()) {
-          referralsTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد إحالات حتى الآن</td></tr>';
+          if (referralsTable) {
+            referralsTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد إحالات حتى الآن</td></tr>';
+          }
           return;
         }
         
         const referrals = snapshot.val();
-        referralsTable.innerHTML = '';
-        
-        // عرض أحدث 5 إحالات فقط
-        const recentReferrals = Object.entries(referrals)
-          .sort((a, b) => new Date(b[1].joinDate) - new Date(a[1].joinDate))
-          .slice(0, 5);
-        
-        recentReferrals.forEach(([userId, referralData]) => {
-          const row = referralsTable.insertRow();
-          row.innerHTML = `
-            <td>${referralData.name}</td>
-            <td>${referralData.email}</td>
-            <td>${new Date(referralData.joinDate).toLocaleDateString('ar-SA')}</td>
-            <td><span class="user-badge level-0">نشط</span></td>
-          `;
-        });
+        if (referralsTable) {
+          referralsTable.innerHTML = '';
+          
+          // عرض أحدث 5 إحالات فقط
+          const recentReferrals = Object.entries(referrals)
+            .sort((a, b) => new Date(b[1].joinDate) - new Date(a[1].joinDate))
+            .slice(0, 5);
+          
+          recentReferrals.forEach(([userId, referralData]) => {
+            const row = referralsTable.insertRow();
+            row.innerHTML = `
+              <td>${referralData.name}</td>
+              <td>${referralData.email}</td>
+              <td>${new Date(referralData.joinDate).toLocaleDateString('ar-SA')}</td>
+              <td><span class="user-badge level-0">نشط</span></td>
+            `;
+          });
+        }
       });
     } catch (error) {
       console.error("Error loading recent referrals:", error);
@@ -180,9 +198,11 @@ class DashboardManager {
     if (copyBtn) {
       copyBtn.addEventListener('click', () => {
         const referralLink = document.getElementById('referral-link');
-        referralLink.select();
-        document.execCommand('copy');
-        alert('تم نسخ رابط الإحالة!');
+        if (referralLink) {
+          referralLink.select();
+          document.execCommand('copy');
+          alert('تم نسخ رابط الإحالة!');
+        }
       });
     }
 
@@ -200,8 +220,11 @@ class DashboardManager {
     const shareFb = document.getElementById('share-fb');
     if (shareFb) {
       shareFb.addEventListener('click', () => {
-        const url = encodeURIComponent(document.getElementById('referral-link').value);
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+        const referralLink = document.getElementById('referral-link');
+        if (referralLink) {
+          const url = encodeURIComponent(referralLink.value);
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+        }
       });
     }
     
@@ -209,9 +232,12 @@ class DashboardManager {
     const shareTwitter = document.getElementById('share-twitter');
     if (shareTwitter) {
       shareTwitter.addEventListener('click', () => {
-        const text = encodeURIComponent('انضم إلى هذا الموقع الرائع عبر رابط الإحالة الخاص بي!');
-        const url = encodeURIComponent(document.getElementById('referral-link').value);
-        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+        const referralLink = document.getElementById('referral-link');
+        if (referralLink) {
+          const text = encodeURIComponent('انضم إلى هذا الموقع الرائع عبر رابط الإحالة الخاص بي!');
+          const url = encodeURIComponent(referralLink.value);
+          window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+        }
       });
     }
     
@@ -219,9 +245,12 @@ class DashboardManager {
     const shareWhatsapp = document.getElementById('share-whatsapp');
     if (shareWhatsapp) {
       shareWhatsapp.addEventListener('click', () => {
-        const text = encodeURIComponent('انضم إلى هذا الموقع الرائع عبر رابط الإحالة الخاص بي: ');
-        const url = encodeURIComponent(document.getElementById('referral-link').value);
-        window.open(`https://wa.me/?text=${text}${url}`, '_blank');
+        const referralLink = document.getElementById('referral-link');
+        if (referralLink) {
+          const text = encodeURIComponent('انضم إلى هذا الموقع الرائع عبر رابط الإحالة الخاص بي: ');
+          const url = encodeURIComponent(referralLink.value);
+          window.open(`https://wa.me/?text=${text}${url}`, '_blank');
+        }
       });
     }
   }
@@ -241,9 +270,6 @@ window.checkPromotionManually = async () => {
       alert.style.top = '20px';
       alert.style.right = '20px';
       alert.style.zIndex = '1000';
-      alert.style.padding = '15px';
-      alert.style.borderRadius = '5px';
-      alert.style.fontWeight = 'bold';
       document.body.appendChild(alert);
     }
     
