@@ -1,6 +1,6 @@
 // dashboard.js
 import { auth, database, ref, get, onValue } from './firebase.js';
-import { checkPromotions, setupRankChangeListener, setupPointsChangeListener } from './firebase.js';
+import { checkPromotions, setupRankChangeListener } from './firebase.js';
 import { authManager } from './auth.js';
 
 class DashboardManager {
@@ -16,8 +16,8 @@ class DashboardManager {
       this.setupEventListeners();
       this.setupSocialShare();
       
-      // بدء الاستماع لتغيرات المرتبة والنقاط
-      await this.setupListeners(user.uid);
+      // بدء الاستماع لتغيرات المرتبة
+      await this.setupRankListener(user.uid);
     } else {
       window.location.href = 'index.html';
     }
@@ -150,8 +150,8 @@ class DashboardManager {
     }
   }
 
-  // إعداد المستمعين لتغيرات المرتبة والنقاط
-  async setupListeners(userId) {
+  // إعداد المستمع لتغيرات المرتبة
+  async setupRankListener(userId) {
     try {
       // الاستماع لتغيرات المرتبة الخاصة بالمستخدم
       const rankRef = ref(database, 'users/' + userId + '/rank');
@@ -166,14 +166,11 @@ class DashboardManager {
         }
       });
       
-      // الاستماع لتغيرات النقاط الخاصة بالمستخدم
-      setupPointsChangeListener(userId);
-      
       // بدء الاستماع لتغيرات مراتب أعضاء الفريق
       await setupRankChangeListener(userId);
       
     } catch (error) {
-      console.error("Error setting up listeners:", error);
+      console.error("Error setting up rank listener:", error);
     }
   }
 
@@ -244,6 +241,9 @@ window.checkPromotionManually = async () => {
       alert.style.top = '20px';
       alert.style.right = '20px';
       alert.style.zIndex = '1000';
+      alert.style.padding = '15px';
+      alert.style.borderRadius = '5px';
+      alert.style.fontWeight = 'bold';
       document.body.appendChild(alert);
     }
     
@@ -283,7 +283,7 @@ window.checkPromotionManually = async () => {
 };
 
 // إضافة زر للتحقق اليدوي من الترقيات (للتdebug)
-document.addEventListener('DOMContentLoaded', () {
+document.addEventListener('DOMContentLoaded', () => {
   const rankSection = document.querySelector('.rank-section');
   if (rankSection) {
     const manualCheckBtn = document.createElement('button');
