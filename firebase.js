@@ -117,9 +117,9 @@ const checkPromotions = async (userId) => {
 };
 
 // التحقق من ترقية المُحيل بناءً على ترقية أحد أفراد الفريق
-const checkTeamPromotions = async (referrerId, triggeredRank = null) => {
+const checkTeamPromotions = async (referrerId, teamMemberRank) => {
   try {
-    console.log(`التحقق من ترقيات فريق المستخدم: ${referrerId}, المرتبة المحفزة: ${triggeredRank}`);
+    console.log(`التحقق من ترقيات فريق المستخدم: ${referrerId}, مرتبة العضو: ${teamMemberRank}`);
     
     const referrerRef = ref(database, 'users/' + referrerId);
     const referrerSnapshot = await get(referrerRef);
@@ -140,7 +140,7 @@ const checkTeamPromotions = async (referrerId, triggeredRank = null) => {
       const requiredTeamRank = targetRank - 1;
       
       // إذا كانت هناك مرتبة محفزة والمرتبة المطلوبة أعلى من المحفزة، تخطى
-      if (triggeredRank && requiredTeamRank > triggeredRank) {
+      if (teamMemberRank && requiredTeamRank > teamMemberRank) {
         continue;
       }
       
@@ -224,7 +224,12 @@ const addPointsAndCheckPromotion = async (userId, pointsToAdd) => {
     console.log(`تمت إضافة ${pointsToAdd} نقطة للمستخدم ${userId}. النقاط الجديدة: ${newPoints}`);
     
     // التحقق من الترقية بعد إضافة النقاط
-    await checkPromotions(userId);
+    const promoted = await checkPromotions(userId);
+    
+    // إذا لم يتم الترقية، تحقق من ترقية الفريق أيضاً
+    if (!promoted && userData.referredBy) {
+      await checkTeamPromotions(userData.referredBy);
+    }
     
   } catch (error) {
     console.error("Error adding points:", error);
@@ -261,27 +266,11 @@ const setupRankChangeListener = async (userId) => {
   }
 };
 
-// دالة للاستماع لتغيرات النقاط والتحقق من الترقية
-const setupPointsChangeListener = (userId) => {
-  const pointsRef = ref(database, 'users/' + userId + '/points');
-  
-  onValue(pointsRef, async (snapshot) => {
-    if (snapshot.exists()) {
-      const points = snapshot.val();
-      console.log(`تغيرت نقاط المستخدم ${userId} إلى: ${points}`);
-      
-      // التحقق من الترقية عند تغير النقاط
-      await checkPromotions(userId);
-    }
-  });
-};
-
 // تصدير الكائنات لاستخدامها في ملفات أخرى
 export { 
   app, analytics, auth, database, storage,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,
   ref, set, push, onValue, serverTimestamp, update, remove, query, orderByChild, equalTo, get, child,
   storageRef, uploadBytesResumable, getDownloadURL,
-  checkPromotions, checkTeamPromotions, addPointsAndCheckPromotion, 
-  setupRankChangeListener, setupPointsChangeListener
+  checkPromotions, checkTeamPromotions, addPointsAndCheckPromotion, setupRankChangeListener
 };
