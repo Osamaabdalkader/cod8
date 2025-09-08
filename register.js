@@ -1,7 +1,7 @@
 // register.js
 import { auth, createUserWithEmailAndPassword } from './firebase.js';
-import { database, ref, set, get, child, update } from './firebase.js';
-import { addPointsAndCheckPromotion } from './firebase.js';
+import { database, ref, set, get, child } from './firebase.js';
+import { addPointsAndCheckPromotion, setupRankChangeListener } from './firebase.js';
 import { authManager } from './auth.js';
 
 class RegisterManager {
@@ -47,20 +47,15 @@ class RegisterManager {
     }
   }
 
-
-
-
-
-
-
-
-
-  // ... (الكود الأصلي يبقى كما هو حتى processReferral)
-
   async processReferral(referralCode, newUserId, name, email) {
     try {
       const referrerId = await this.getUserIdFromReferralCode(referralCode);
-      if (!referrerId) return;
+      if (!referrerId) {
+        console.log("لم يتم العثور على صاحب رمز الإحالة");
+        return;
+      }
+      
+      console.log(`تم العثور على صاحب رمز الإحالة: ${referrerId}`);
       
       await set(ref(database, `userReferrals/${referrerId}/${newUserId}`), {
         name: name,
@@ -68,6 +63,8 @@ class RegisterManager {
         joinDate: new Date().toISOString(),
         level: 1
       });
+      
+      console.log(`تم إضافة العضو الجديد ${newUserId} إلى فريق ${referrerId}`);
       
       // استخدام الدالة الجديدة لإضافة النقاط والتحقق من الترقية
       await addPointsAndCheckPromotion(referrerId, 10);
@@ -108,7 +105,7 @@ class RegisterManager {
         email: email,
         referralCode: userReferralCode,
         points: 0,
-        rank: 0, // إضافة حقل المرتبة وتهيئته إلى 0
+        rank: 0,
         joinDate: new Date().toISOString(),
         referredBy: referralCode || null
       });
@@ -116,8 +113,11 @@ class RegisterManager {
       // حفظ رمز الإحالة للبحث السريع
       await set(ref(database, 'referralCodes/' + userReferralCode), userId);
       
+      console.log(`تم إنشاء حساب جديد: ${userId} مع رمز إحالة: ${userReferralCode}`);
+      
       // إذا كان هناك رمز إحالة، إضافة العلاقة
       if (referralCode) {
+        console.log(`معالجة الإحالة باستخدام الرمز: ${referralCode}`);
         await this.processReferral(referralCode, userId, name, email);
       }
       
@@ -129,6 +129,7 @@ class RegisterManager {
       }, 1000);
       
     } catch (error) {
+      console.error("Error creating account:", error);
       authManager.showAlert(alert, 'error', error.message);
     }
   }
@@ -138,4 +139,3 @@ class RegisterManager {
 document.addEventListener('DOMContentLoaded', () => {
   new RegisterManager();
 });
-  
