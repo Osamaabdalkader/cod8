@@ -1,5 +1,5 @@
 // dashboard.js
-import { auth, database, ref, get, onValue, update } from './firebase.js';
+import { auth, database, ref, get, onValue } from './firebase.js';
 import { checkPromotions, setupRankChangeListener } from './firebase.js';
 import { authManager } from './auth.js';
 
@@ -241,6 +241,9 @@ window.checkPromotionManually = async () => {
       alert.style.top = '20px';
       alert.style.right = '20px';
       alert.style.zIndex = '1000';
+      alert.style.padding = '15px';
+      alert.style.borderRadius = '5px';
+      alert.style.fontWeight = 'bold';
       document.body.appendChild(alert);
     }
     
