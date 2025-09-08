@@ -2,6 +2,7 @@
 import { auth, createUserWithEmailAndPassword } from './firebase.js';
 import { database, ref, set, get, child, update } from './firebase.js';
 import { authManager } from './auth.js';
+import { addPointsAndCheckPromotion } from './firebase.js';
 
 class RegisterManager {
   constructor() {
@@ -58,13 +59,8 @@ class RegisterManager {
         level: 1
       });
       
-      // منح نقاط للمُحيل
-      const userRef = ref(database, `users/${referrerId}/points`);
-      const snapshot = await get(userRef);
-      const currentPoints = snapshot.exists() ? snapshot.val() : 0;
-      await update(ref(database, `users/${referrerId}`), {
-        points: currentPoints + 10
-      });
+      // استخدام الدالة الجديدة لإضافة النقاط والتحقق من الترقية
+      await addPointsAndCheckPromotion(referrerId, 10);
       
     } catch (error) {
       console.error("Error processing referral:", error);
@@ -99,9 +95,9 @@ class RegisterManager {
         email: email,
         referralCode: userReferralCode,
         points: 0,
+        rank: 0, // إضافة حقل المرتبة
         joinDate: new Date().toISOString(),
-        referredBy: referralCode || null,
-        rank: 0 // إضافة المرتبة الابتدائية
+        referredBy: referralCode || null
       });
       
       // حفظ رمز الإحالة للبحث السريع
