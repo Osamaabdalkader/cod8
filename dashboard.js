@@ -1,6 +1,6 @@
 // dashboard.js
-import { auth, database, ref, get, onValue } from './firebase.js';
-import { checkPromotions } from './firebase.js';
+import { auth, database, ref, get, onValue, update } from './firebase.js';
+import { checkPromotions, setupRankChangeListener } from './firebase.js';
 import { authManager } from './auth.js';
 
 class DashboardManager {
@@ -15,6 +15,9 @@ class DashboardManager {
       await this.loadUserData(user.uid);
       this.setupEventListeners();
       this.setupSocialShare();
+      
+      // بدء الاستماع لتغيرات المرتبة
+      await this.setupRankListener(user.uid);
     } else {
       window.location.href = 'index.html';
     }
@@ -147,6 +150,30 @@ class DashboardManager {
     }
   }
 
+  // إعداد المستمع لتغيرات المرتبة
+  async setupRankListener(userId) {
+    try {
+      // الاستماع لتغيرات المرتبة الخاصة بالمستخدم
+      const rankRef = ref(database, 'users/' + userId + '/rank');
+      
+      onValue(rankRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const newRank = snapshot.val();
+          console.log(`تم تغيير مرتبتك إلى: ${newRank}`);
+          
+          // عند تغيير المرتبة، أعد تحميل واجهة المستخدم
+          this.loadUserData(userId);
+        }
+      });
+      
+      // بدء الاستماع لتغيرات مراتب أعضاء الفريق
+      await setupRankChangeListener(userId);
+      
+    } catch (error) {
+      console.error("Error setting up rank listener:", error);
+    }
+  }
+
   setupEventListeners() {
     // نسخ رابط الإحالة
     const copyBtn = document.getElementById('copy-link-btn');
@@ -170,24 +197,33 @@ class DashboardManager {
 
   setupSocialShare() {
     // مشاركة على فيسبوك
-    document.getElementById('share-fb').addEventListener('click', () => {
-      const url = encodeURIComponent(document.getElementById('referral-link').value);
-      window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
-    });
+    const shareFb = document.getElementById('share-fb');
+    if (shareFb) {
+      shareFb.addEventListener('click', () => {
+        const url = encodeURIComponent(document.getElementById('referral-link').value);
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+      });
+    }
     
     // مشاركة على تويتر
-    document.getElementById('share-twitter').addEventListener('click', () => {
-      const text = encodeURIComponent('انضم إلى هذا الموقع الرائع عبر رابط الإحالة الخاص بي!');
-      const url = encodeURIComponent(document.getElementById('referral-link').value);
-      window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
-    });
+    const shareTwitter = document.getElementById('share-twitter');
+    if (shareTwitter) {
+      shareTwitter.addEventListener('click', () => {
+        const text = encodeURIComponent('انضم إلى هذا الموقع الرائع عبر رابط الإحالة الخاص بي!');
+        const url = encodeURIComponent(document.getElementById('referral-link').value);
+        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+      });
+    }
     
     // مشاركة على واتساب
-    document.getElementById('share-whatsapp').addEventListener('click', () => {
-      const text = encodeURIComponent('انضم إلى هذا الموقع الرائع عبر رابط الإحالة الخاص بي: ');
-      const url = encodeURIComponent(document.getElementById('referral-link').value);
-      window.open(`https://wa.me/?text=${text}${url}`, '_blank');
-    });
+    const shareWhatsapp = document.getElementById('share-whatsapp');
+    if (shareWhatsapp) {
+      shareWhatsapp.addEventListener('click', () => {
+        const text = encodeURIComponent('انضم إلى هذا الموقع الرائع عبر رابط الإحالة الخاص بي: ');
+        const url = encodeURIComponent(document.getElementById('referral-link').value);
+        window.open(`https://wa.me/?text=${text}${url}`, '_blank');
+      });
+    }
   }
 }
 
@@ -196,12 +232,21 @@ window.checkPromotionManually = async () => {
   if (!auth.currentUser) return;
   
   try {
-    const alert = document.getElementById('login-alert') || document.createElement('div');
+    // إنشاء عنصر تنبيه إذا لم يكن موجوداً
+    let alert = document.getElementById('login-alert');
+    if (!alert) {
+      alert = document.createElement('div');
+      alert.id = 'promotion-alert';
+      alert.style.position = 'fixed';
+      alert.style.top = '20px';
+      alert.style.right = '20px';
+      alert.style.zIndex = '1000';
+      document.body.appendChild(alert);
+    }
+    
     alert.className = 'alert alert-info';
     alert.style.display = 'block';
     alert.textContent = 'جاري التحقق من الترقيات...';
-    
-    document.body.appendChild(alert);
     
     const promoted = await checkPromotions(auth.currentUser.uid);
     
@@ -220,6 +265,17 @@ window.checkPromotionManually = async () => {
     
   } catch (error) {
     console.error("Error in manual promotion check:", error);
+    
+    // عرض رسالة الخطأ
+    const alert = document.getElementById('promotion-alert') || document.createElement('div');
+    alert.className = 'alert alert-error';
+    alert.style.display = 'block';
+    alert.textContent = 'حدث خطأ أثناء التحقق من الترقيات';
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+      alert.style.display = 'none';
+    }, 3000);
   }
 };
 
