@@ -76,10 +76,12 @@ const checkPromotions = async (userId) => {
     const userSnapshot = await get(userRef);
     const userData = userSnapshot.val();
     
-    if (!userData) return;
+    if (!userData) return false;
     
     const currentRank = userData.rank || 0;
     const userPoints = userData.points || 0;
+    
+    console.log(`التحقق من ترقيات المستخدم: ${userId}, النقاط: ${userPoints}, المرتبة الحالية: ${currentRank}`);
     
     // التحقق من متطلبات كل مرتبة
     let newRank = currentRank;
@@ -87,10 +89,12 @@ const checkPromotions = async (userId) => {
     // المرتبة 1: 100 نقطة
     if (currentRank === 0 && userPoints >= 100) {
       newRank = 1;
+      console.log(`المستخدم مؤهل للترقية إلى المرتبة 1`);
     }
     
     // إذا تمت ترقية المستخدم، تحديث البيانات
     if (newRank !== currentRank) {
+      console.log(`ترقية المستخدم من المرتبة ${currentRank} إلى ${newRank}`);
       await update(userRef, {
         rank: newRank,
         lastPromotion: new Date().toISOString()
@@ -98,17 +102,25 @@ const checkPromotions = async (userId) => {
       
       // بعد الترقية، تحقق من ترقية المُحيل إذا لزم الأمر
       if (userData.referredBy) {
+        console.log(`المستخدم تمت إحالته بواسطة ${userData.referredBy}. التحقق من ترقيات الفريق...`);
         await checkTeamPromotions(userData.referredBy, newRank);
       }
+      
+      return true; // تمت ترقية
     }
+    
+    return false; // لم يتم ترقية
   } catch (error) {
     console.error("Error checking promotions:", error);
+    return false;
   }
 };
 
 // التحقق من ترقية المُحيل بناءً على ترقية أحد أفراد الفريق
 const checkTeamPromotions = async (referrerId, teamMemberRank) => {
   try {
+    console.log(`التحقق من ترقيات فريق المستخدم: ${referrerId}, مرتبة العضو: ${teamMemberRank}`);
+    
     const referrerRef = ref(database, 'users/' + referrerId);
     const referrerSnapshot = await get(referrerRef);
     const referrerData = referrerSnapshot.val();
@@ -117,31 +129,47 @@ const checkTeamPromotions = async (referrerId, teamMemberRank) => {
     
     const currentRank = referrerData.rank || 0;
     
-    // إذا كانت مرتبة المُحيل أقل من المرتبة المطلوبة للترقية، لا داعي للتحقق
+    console.log(`مرتبة المحيل الحالية: ${currentRank}`);
+    
+    // إذا كانت مرتبة المُحيل أقل من أو تساوي مرتبة العضو، تحقق من إمكانية الترقية
     if (currentRank <= teamMemberRank) {
       // الحصول على جميع أفراد الفريق
       const teamRef = ref(database, 'userReferrals/' + referrerId);
       const teamSnapshot = await get(teamRef);
       
-      if (!teamSnapshot.exists()) return;
+      if (!teamSnapshot.exists()) {
+        console.log("لا يوجد أعضاء في الفريق");
+        return;
+      }
       
       const teamMembers = teamSnapshot.val();
       let qualifiedMembers = 0;
+      
+      console.log(`عدد أفراد الفريق: ${Object.keys(teamMembers).length}`);
       
       // التحقق من عدد أفراد الفريق الذين حققوا المرتبة المطلوبة
       for (const memberId in teamMembers) {
         const memberRef = ref(database, 'users/' + memberId);
         const memberSnapshot = await get(memberRef);
-        const memberData = memberSnapshot.val();
         
-        if (memberData && memberData.rank >= teamMemberRank) {
-          qualifiedMembers++;
+        if (memberSnapshot.exists()) {
+          const memberData = memberSnapshot.val();
+          const memberRank = memberData.rank || 0;
+          
+          console.log(`عضو ${memberId}: المرتبة ${memberRank}`);
+          
+          if (memberRank >= teamMemberRank) {
+            qualifiedMembers++;
+            console.log(`عضو مؤهل: ${qualifiedMembers}`);
+          }
         }
       }
       
       // إذا كان هناك 3 أفراد مؤهلين، ترقية المُحيل
       if (qualifiedMembers >= 3 && currentRank === teamMemberRank) {
         const newRank = currentRank + 1;
+        console.log(`ترقية المحيل إلى المرتبة ${newRank}`);
+        
         await update(referrerRef, {
           rank: newRank,
           lastPromotion: new Date().toISOString()
@@ -149,12 +177,42 @@ const checkTeamPromotions = async (referrerId, teamMemberRank) => {
         
         // تحقق من ترقية المُحيل الأعلى إذا لزم الأمر
         if (referrerData.referredBy && newRank > 0) {
+          console.log(`التحقق من ترقية المحيل الأعلى: ${referrerData.referredBy}`);
           await checkTeamPromotions(referrerData.referredBy, newRank);
         }
+      } else {
+        console.log(`أعضاء مؤهلون: ${qualifiedMembers}/3 - لا توجد ترقية`);
       }
     }
   } catch (error) {
     console.error("Error checking team promotions:", error);
+  }
+};
+
+// دالة لزيادة النقاط والتحقق من الترقية
+const addPointsAndCheckPromotion = async (userId, pointsToAdd) => {
+  try {
+    const userRef = ref(database, 'users/' + userId);
+    const userSnapshot = await get(userRef);
+    
+    if (!userSnapshot.exists()) return;
+    
+    const userData = userSnapshot.val();
+    const currentPoints = userData.points || 0;
+    const newPoints = currentPoints + pointsToAdd;
+    
+    // تحديث النقاط
+    await update(userRef, {
+      points: newPoints
+    });
+    
+    console.log(`تمت إضافة ${pointsToAdd} نقطة للمستخدم ${userId}. النقاط الجديدة: ${newPoints}`);
+    
+    // التحقق من الترقية بعد إضافة النقاط
+    await checkPromotions(userId);
+    
+  } catch (error) {
+    console.error("Error adding points:", error);
   }
 };
 
@@ -164,5 +222,5 @@ export {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,
   ref, set, push, onValue, serverTimestamp, update, remove, query, orderByChild, equalTo, get, child,
   storageRef, uploadBytesResumable, getDownloadURL,
-  checkPromotions, checkTeamPromotions
+  checkPromotions, checkTeamPromotions, addPointsAndCheckPromotion
 };
