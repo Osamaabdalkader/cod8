@@ -1,6 +1,7 @@
 // dashboard.js
 import { auth, database, ref, get, onValue } from './firebase.js';
 import { authManager } from './auth.js';
+import { checkPromotions } from './firebase.js';
 
 class DashboardManager {
   constructor() {
@@ -27,6 +28,7 @@ class DashboardManager {
       if (this.userData) {
         this.updateUserUI();
         this.loadRecentReferrals(userId);
+        this.loadRankInfo();
       }
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -48,8 +50,50 @@ class DashboardManager {
     
     // تحميل عدد الإحالات
     this.loadReferralsCount(auth.currentUser.uid);
-    // تحميل معلومات المرتبة
-    this.loadRankInfo();
+  }
+
+  async loadReferralsCount(userId) {
+    try {
+      const snapshot = await get(ref(database, 'userReferrals/' + userId));
+      const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+      document.getElementById('referrals-count').textContent = count;
+    } catch (error) {
+      console.error("Error loading referrals count:", error);
+    }
+  }
+
+  async loadRecentReferrals(userId) {
+    try {
+      const referralsRef = ref(database, 'userReferrals/' + userId);
+      onValue(referralsRef, (snapshot) => {
+        const referralsTable = document.getElementById('recent-referrals');
+        
+        if (!snapshot.exists()) {
+          referralsTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد إحالات حتى الآن</td></tr>';
+          return;
+        }
+        
+        const referrals = snapshot.val();
+        referralsTable.innerHTML = '';
+        
+        // عرض أحدث 5 إحالات فقط
+        const recentReferrals = Object.entries(referrals)
+          .sort((a, b) => new Date(b[1].joinDate) - new Date(a[1].joinDate))
+          .slice(0, 5);
+        
+        recentReferrals.forEach(([userId, referralData]) => {
+          const row = referralsTable.insertRow();
+          row.innerHTML = `
+            <td>${referralData.name}</td>
+            <td>${referralData.email}</td>
+            <td>${new Date(referralData.joinDate).toLocaleDateString('ar-SA')}</td>
+            <td><span class="user-badge level-0">نشط</span></td>
+          `;
+        });
+      });
+    } catch (error) {
+      console.error("Error loading recent referrals:", error);
+    }
   }
 
   // تحميل معلومات المرتبة
@@ -102,50 +146,6 @@ class DashboardManager {
     }
   }
 
-  async loadReferralsCount(userId) {
-    try {
-      const snapshot = await get(ref(database, 'userReferrals/' + userId));
-      const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
-      document.getElementById('referrals-count').textContent = count;
-    } catch (error) {
-      console.error("Error loading referrals count:", error);
-    }
-  }
-
-  async loadRecentReferrals(userId) {
-    try {
-      const referralsRef = ref(database, 'userReferrals/' + userId);
-      onValue(referralsRef, (snapshot) => {
-        const referralsTable = document.getElementById('recent-referrals');
-        
-        if (!snapshot.exists()) {
-          referralsTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد إحالات حتى الآن</td></tr>';
-          return;
-        }
-        
-        const referrals = snapshot.val();
-        referralsTable.innerHTML = '';
-        
-        // عرض أحدث 5 إحالات فقط
-        const recentReferrals = Object.entries(referrals)
-          .sort((a, b) => new Date(b[1].joinDate) - new Date(a[1].joinDate))
-          .slice(0, 5);
-        
-        recentReferrals.forEach(([userId, referralData]) => {
-          const row = referralsTable.insertRow();
-          row.innerHTML = `
-            <td>${referralData.name}</td>
-            <td>${referralData.email}</td>
-            <td>${new Date(referralData.joinDate).toLocaleDateString('ar-SA')}</td>
-            <td><span class="user-badge level-0">نشط</span></td>
-          `;
-        });
-      });
-    } catch (error) {
-      console.error("Error loading recent referrals:", error);
-    }
-  }
-
   setupEventListeners() {
     // نسخ رابط الإحالة
     const copyBtn = document.getElementById('copy-link-btn');
@@ -189,6 +189,51 @@ class DashboardManager {
     });
   }
 }
+
+// دالة يدوية للتحقق من الترقيات (للاستخدام في التصحيح)
+window.checkPromotionManually = async () => {
+  if (!auth.currentUser) return;
+  
+  try {
+    const alert = document.getElementById('login-alert') || document.createElement('div');
+    alert.className = 'alert alert-info';
+    alert.style.display = 'block';
+    alert.textContent = 'جاري التحقق من الترقيات...';
+    
+    document.body.appendChild(alert);
+    
+    const promoted = await checkPromotions(auth.currentUser.uid);
+    
+    if (promoted) {
+      alert.className = 'alert alert-success';
+      alert.textContent = 'تمت الترقية بنجاح!';
+    } else {
+      alert.className = 'alert alert-info';
+      alert.textContent = 'لا توجد ترقية متاحة حالياً';
+    }
+    
+    setTimeout(() => {
+      alert.style.display = 'none';
+      window.location.reload();
+    }, 3000);
+    
+  } catch (error) {
+    console.error("Error in manual promotion check:", error);
+  }
+};
+
+// إضافة زر للتحقق اليدوي من الترقيات (للتdebug)
+document.addEventListener('DOMContentLoaded', () => {
+  const rankSection = document.querySelector('.rank-section');
+  if (rankSection) {
+    const manualCheckBtn = document.createElement('button');
+    manualCheckBtn.textContent = 'تحقق من الترقيات يدوياً';
+    manualCheckBtn.className = 'action-btn';
+    manualCheckBtn.style.marginTop = '10px';
+    manualCheckBtn.onclick = window.checkPromotionManually;
+    rankSection.appendChild(manualCheckBtn);
+  }
+});
 
 // تهيئة النظام عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
