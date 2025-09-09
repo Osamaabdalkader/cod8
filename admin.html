@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة المشرفين - نظام الإحالة</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="user-info">
+                <img id="user-avatar" src="https://ui-avatars.com/api/?name=مشرف&background=random" alt="صورة المشرف">
+                <span id="username">مشرف</span>
+            </div>
+            <h1><i class="fas fa-user-shield"></i> لوحة المشرفين</h1>
+            <p>إدارة المستخدمين وتعديل النقاط والمراتب</p>
+        </header>
+        
+        <div class="tabs">
+            <div class="tab" onclick="window.location.href='index.html'">الرئيسية</div>
+            <div class="tab" onclick="window.location.href='dashboard.html'">لوحة التحكم</div>
+            <div class="tab" onclick="window.location.href='network.html'">شبكتي</div>
+            <div class="tab" onclick="window.location.href='management.html'">الإدارة</div>
+            <div class="tab active">لوحة المشرفين</div>
+            <div class="tab" id="logout-btn">تسجيل الخروج</div>
+        </div>
+        
+        <div class="tab-content active">
+            <div class="admin-controls">
+                <h2>إدارة المستخدمين</h2>
+                
+                <div class="filters">
+                    <input type="text" id="admin-search" placeholder="ابحث بالاسم أو البريد الإلكتروني">
+                    <select id="admin-rank-filter">
+                        <option value="">جميع المراتب</option>
+                        <option value="0">مبتدئ (0)</option>
+                        <option value="1">عضو (1)</option>
+                        <option value="2">عضو متميز (2)</option>
+                        <option value="3">عضو نشيط (3)</option>
+                        <option value="4">عضو فعال (4)</option>
+                        <option value="5">عضو برونزي (5)</option>
+                        <option value="6">عضو فضي (6)</option>
+                        <option value="7">عضو ذهبي (7)</option>
+                        <option value="8">عضو بلاتيني (8)</option>
+                        <option value="9">عضو ماسي (9)</option>
+                        <option value="10">قائد (10)</option>
+                    </select>
+                    <button id="admin-search-btn"><i class="fas fa-search"></i> بحث</button>
+                </div>
+                
+                <div class="users-list" id="admin-users-list">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i> جاري تحميل المستخدمين...
+                    </div>
+                </div>
+                
+                <div class="user-details" id="admin-user-details" style="display: none;">
+                    <h3>تفاصيل المستخدم</h3>
+                    <div id="selected-user-info"></div>
+                    
+                    <div class="admin-actions">
+                        <h4>الإجراءات</h4>
+                        <div class="form-group">
+                            <label for="add-points">إضافة نقاط:</label>
+                            <input type="number" id="add-points" min="1" value="10">
+                            <button id="add-points-btn">إضافة النقاط</button>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="set-rank">تعيين المرتبة:</label>
+                            <select id="set-rank">
+                                <option value="0">مبتدئ (0)</option>
+                                <option value="1">عضو (1)</option>
+                                <option value="2">عضو متميز (2)</option>
+                                <option value="3">عضو نشيط (3)</option>
+                                <option value="4">عضو فعال (4)</option>
+                                <option value="5">عضو برونزي (5)</option>
+                                <option value="6">عضو فضي (6)</option>
+                                <option value="7">عضو ذهبي (7)</option>
+                                <option value="8">عضو بلاتيني (8)</option>
+                                <option value="9">عضو ماسي (9)</option>
+                                <option value="10">قائد (10)</option>
+                            </select>
+                            <button id="set-rank-btn">تعيين المرتبة</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="firebase.js"></script>
+    <script type="module" src="auth.js"></script>
+    <script type="module" src="admin.js"></script>
+</body>
+              </html>
