@@ -94,14 +94,15 @@ class RegisterManager {
       
       // حفظ بيانات المستخدم في Realtime Database
       await set(ref(database, 'users/' + userId), {
-        name: name,
-        email: email,
-        referralCode: userReferralCode,
-        points: 0,
-        rank: 0,
-        joinDate: new Date().toISOString(),
-        referredBy: referralCode || null
-      });
+  name: name,
+  email: email,
+  referralCode: userReferralCode,
+  points: 0,
+  rank: 0,
+  isAdmin: false, // إضافة هذا الحقل
+  joinDate: new Date().toISOString(),
+  referredBy: referralCode || null
+});
       
       // حفظ رمز الإحالة للبحث السريع
       await set(ref(database, 'referralCodes/' + userReferralCode), userId);
