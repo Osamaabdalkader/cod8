@@ -3,9 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة المشرفين - نظام الإحالة</title>
+    <title>لوحة تحكم المشرفين - نظام الإحالة</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-panel {
+            padding: 20px;
+        }
+        
+        .search-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-filters {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .search-filters input,
+        .search-filters select {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .users-table th, 
+        .users-table td {
+            padding: 12px 15px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .users-table th {
+            background-color: #f0f0f0;
+            color: #555;
+            font-weight: 600;
+        }
+        
+        .user-details {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .user-info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .admin-actions {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .add-points-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .add-points-form input {
+            flex: 1;
+        }
+        
+        .admin-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -14,8 +94,8 @@
                 <img id="user-avatar" src="https://ui-avatars.com/api/?name=مشرف&background=random" alt="صورة المشرف">
                 <span id="username">مشرف</span>
             </div>
-            <h1><i class="fas fa-user-shield"></i> لوحة المشرفين</h1>
-            <p>إدارة المستخدمين وتعديل النقاط والمراتب</p>
+            <h1><i class="fas fa-user-shield"></i> لوحة تحكم المشرفين</h1>
+            <p>إدارة المستخدمين وتعديل النقاط والصلاحيات</p>
         </header>
         
         <div class="tabs">
@@ -28,64 +108,53 @@
         </div>
         
         <div class="tab-content active">
-            <div class="admin-controls">
-                <h2>إدارة المستخدمين</h2>
-                
-                <div class="filters">
-                    <input type="text" id="admin-search" placeholder="ابحث بالاسم أو البريد الإلكتروني">
-                    <select id="admin-rank-filter">
-                        <option value="">جميع المراتب</option>
-                        <option value="0">مبتدئ (0)</option>
-                        <option value="1">عضو (1)</option>
-                        <option value="2">عضو متميز (2)</option>
-                        <option value="3">عضو نشيط (3)</option>
-                        <option value="4">عضو فعال (4)</option>
-                        <option value="5">عضو برونزي (5)</option>
-                        <option value="6">عضو فضي (6)</option>
-                        <option value="7">عضو ذهبي (7)</option>
-                        <option value="8">عضو بلاتيني (8)</option>
-                        <option value="9">عضو ماسي (9)</option>
-                        <option value="10">قائد (10)</option>
-                    </select>
-                    <button id="admin-search-btn"><i class="fas fa-search"></i> بحث</button>
-                </div>
-                
-                <div class="users-list" id="admin-users-list">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i> جاري تحميل المستخدمين...
+            <div class="admin-panel">
+                <div class="search-section">
+                    <h2><i class="fas fa-search"></i> البحث عن المستخدمين</h2>
+                    <div class="search-filters">
+                        <input type="text" id="search-input" placeholder="ابحث بالاسم أو البريد الإلكتروني">
+                        <select id="rank-filter">
+                            <option value="">جميع المراتب</option>
+                            <option value="0">مبتدئ (0)</option>
+                            <option value="1">عضو (1)</option>
+                            <option value="2">عضو متميز (2)</option>
+                            <option value="3">عضو نشيط (3)</option>
+                            <option value="4">عضو فعال (4)</option>
+                            <option value="5">عضو برونزي (5)</option>
+                            <option value="6">عضو فضي (6)</option>
+                            <option value="7">عضو ذهبي (7)</option>
+                            <option value="8">عضو بلاتيني (8)</option>
+                            <option value="9">عضو ماسي (9)</option>
+                            <option value="10">قائد (10)</option>
+                        </select>
+                        <button id="search-btn"><i class="fas fa-filter"></i> بحث</button>
                     </div>
                 </div>
                 
-                <div class="user-details" id="admin-user-details" style="display: none;">
-                    <h3>تفاصيل المستخدم</h3>
-                    <div id="selected-user-info"></div>
-                    
-                    <div class="admin-actions">
-                        <h4>الإجراءات</h4>
-                        <div class="form-group">
-                            <label for="add-points">إضافة نقاط:</label>
-                            <input type="number" id="add-points" min="1" value="10">
-                            <button id="add-points-btn">إضافة النقاط</button>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="set-rank">تعيين المرتبة:</label>
-                            <select id="set-rank">
-                                <option value="0">مبتدئ (0)</option>
-                                <option value="1">عضو (1)</option>
-                                <option value="2">عضو متميز (2)</option>
-                                <option value="3">عضو نشيط (3)</option>
-                                <option value="4">عضو فعال (4)</option>
-                                <option value="5">عضو برونزي (5)</option>
-                                <option value="6">عضو فضي (6)</option>
-                                <option value="7">عضو ذهبي (7)</option>
-                                <option value="8">عضو بلاتيني (8)</option>
-                                <option value="9">عضو ماسي (9)</option>
-                                <option value="10">قائد (10)</option>
-                            </select>
-                            <button id="set-rank-btn">تعيين المرتبة</button>
-                        </div>
-                    </div>
+                <h2><i class="fas fa-users"></i> قائمة المستخدمين</h2>
+                <div style="overflow-x: auto;">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>الاسم</th>
+                                <th>البريد الإلكتروني</th>
+                                <th>المرتبة</th>
+                                <th>النقاط</th>
+                                <th>مشرف</th>
+                                <th>تاريخ الانضمام</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table">
+                            <tr>
+                                <td colspan="7" style="text-align: center;">جاري تحميل البيانات...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="user-details" class="user-details">
+                    <p style="text-align: center; color: #666;">يرجى تحديد مستخدم لعرض التفاصيل والإجراءات</p>
                 </div>
             </div>
         </div>
@@ -96,4 +165,4 @@
     <script type="module" src="auth.js"></script>
     <script type="module" src="admin.js"></script>
 </body>
-              </html>
+                </html>
