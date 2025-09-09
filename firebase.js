@@ -117,9 +117,9 @@ const checkPromotions = async (userId) => {
 };
 
 // التحقق من ترقية المُحيل بناءً على ترقية أحد أفراد الفريق
-const checkTeamPromotions = async (referrerId, teamMemberRank) => {
+const checkTeamPromotions = async (referrerId, triggeredRank = null) => {
   try {
-    console.log(`التحقق من ترقيات فريق المستخدم: ${referrerId}, مرتبة العضو: ${teamMemberRank}`);
+    console.log(`التحقق من ترقيات فريق المستخدم: ${referrerId}, المرتبة المحفزة: ${triggeredRank}`);
     
     const referrerRef = ref(database, 'users/' + referrerId);
     const referrerSnapshot = await get(referrerRef);
@@ -140,7 +140,7 @@ const checkTeamPromotions = async (referrerId, teamMemberRank) => {
       const requiredTeamRank = targetRank - 1;
       
       // إذا كانت هناك مرتبة محفزة والمرتبة المطلوبة أعلى من المحفزة، تخطى
-      if (teamMemberRank && requiredTeamRank > teamMemberRank) {
+      if (triggeredRank && requiredTeamRank > triggeredRank) {
         continue;
       }
       
@@ -224,12 +224,7 @@ const addPointsAndCheckPromotion = async (userId, pointsToAdd) => {
     console.log(`تمت إضافة ${pointsToAdd} نقطة للمستخدم ${userId}. النقاط الجديدة: ${newPoints}`);
     
     // التحقق من الترقية بعد إضافة النقاط
-    const promoted = await checkPromotions(userId);
-    
-    // إذا لم يتم الترقية، تحقق من ترقية الفريق أيضاً
-    if (!promoted && userData.referredBy) {
-      await checkTeamPromotions(userData.referredBy);
-    }
+    await checkPromotions(userId);
     
   } catch (error) {
     console.error("Error adding points:", error);
@@ -266,11 +261,124 @@ const setupRankChangeListener = async (userId) => {
   }
 };
 
+// دالة للتحقق إذا كان المستخدم مشرفاً
+const checkAdminStatus = async (userId) => {
+  try {
+    const userRef = ref(database, 'users/' + userId);
+    const userSnapshot = await get(userRef);
+    
+    if (!userSnapshot.exists()) return false;
+    
+    const userData = userSnapshot.val();
+    return userData.isAdmin === true;
+  } catch (error) {
+    console.error("Error checking admin status:", error);
+    return false;
+  }
+};
+
+// دالة للحصول على جميع المستخدمين
+const getAllUsers = async () => {
+  try {
+    const usersRef = ref(database, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (!snapshot.exists()) return [];
+    
+    return snapshot.val();
+  } catch (error) {
+    console.error("Error getting all users:", error);
+    return [];
+  }
+};
+
+// دالة للبحث عن المستخدمين
+const searchUsers = async (searchTerm, rankFilter = null) => {
+  try {
+    const usersRef = ref(database, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (!snapshot.exists()) return [];
+    
+    const allUsers = snapshot.val();
+    const results = [];
+    
+    for (const userId in allUsers) {
+      const user = allUsers[userId];
+      
+      // تطبيق فلتر الرتبة إذا كان محدداً
+      if (rankFilter !== null && user.rank !== parseInt(rankFilter)) {
+        continue;
+      }
+      
+      // البحث بالاسم أو البريد الإلكتروني
+      if (user.name && user.name.includes(searchTerm)) {
+        results.push({ id: userId, ...user });
+      } else if (user.email && user.email.includes(searchTerm)) {
+        results.push({ id: userId, ...user });
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error("Error searching users:", error);
+    return [];
+  }
+};
+
+// دالة لإضافة نقاط للمستخدم (للمشرفين فقط)
+const addPointsToUser = async (userId, pointsToAdd, adminId) => {
+  try {
+    // التحقق من أن المستخدم الذي يضيف النقاط هو مشرف
+    const isAdmin = await checkAdminStatus(adminId);
+    if (!isAdmin) {
+      throw new Error("ليست لديك صلاحية إضافة النقاط");
+    }
+    
+    const userRef = ref(database, 'users/' + userId);
+    const userSnapshot = await get(userRef);
+    
+    if (!userSnapshot.exists()) {
+      throw new Error("المستخدم غير موجود");
+    }
+    
+    const userData = userSnapshot.val();
+    const currentPoints = userData.points || 0;
+    const newPoints = currentPoints + pointsToAdd;
+    
+    // تحديث النقاط
+    await update(userRef, {
+      points: newPoints
+    });
+    
+    // تسجيل العملية في سجل المشرفين
+    const adminLogRef = ref(database, 'adminLogs/' + Date.now());
+    await set(adminLogRef, {
+      adminId: adminId,
+      userId: userId,
+      action: 'add_points',
+      points: pointsToAdd,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log(`تمت إضافة ${pointsToAdd} نقطة للمستخدم ${userId} بواسطة المشرف ${adminId}`);
+    
+    // التحقق من الترقية بعد إضافة النقاط
+    await checkPromotions(userId);
+    
+    return newPoints;
+  } catch (error) {
+    console.error("Error adding points to user:", error);
+    throw error;
+  }
+};
+
 // تصدير الكائنات لاستخدامها في ملفات أخرى
 export { 
   app, analytics, auth, database, storage,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,
   ref, set, push, onValue, serverTimestamp, update, remove, query, orderByChild, equalTo, get, child,
   storageRef, uploadBytesResumable, getDownloadURL,
-  checkPromotions, checkTeamPromotions, addPointsAndCheckPromotion, setupRankChangeListener
+  checkPromotions, checkTeamPromotions, addPointsAndCheckPromotion, setupRankChangeListener,
+  checkAdminStatus, getAllUsers, searchUsers, addPointsToUser
 };
