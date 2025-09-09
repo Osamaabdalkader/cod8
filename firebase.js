@@ -373,6 +373,122 @@ const addPointsToUser = async (userId, pointsToAdd, adminId) => {
   }
 };
 
+
+// في نهاية firebase.js قبل التصدير
+// دالة للتحقق إذا كان المستخدم مشرفاً
+const checkAdminStatus = async (userId) => {
+    try {
+        const userRef = ref(database, 'users/' + userId);
+        const userSnapshot = await get(userRef);
+        
+        if (!userSnapshot.exists()) return false;
+        
+        const userData = userSnapshot.val();
+        return userData.isAdmin === true;
+    } catch (error) {
+        console.error("Error checking admin status:", error);
+        return false;
+    }
+};
+
+// دالة للحصول على جميع المستخدمين
+const getAllUsers = async () => {
+    try {
+        const usersRef = ref(database, 'users');
+        const snapshot = await get(usersRef);
+        
+        if (!snapshot.exists()) return {};
+        
+        return snapshot.val();
+    } catch (error) {
+        console.error("Error getting all users:", error);
+        return {};
+    }
+};
+
+// دالة للبحث عن المستخدمين
+const searchUsers = async (searchTerm = '', rankFilter = null) => {
+    try {
+        const usersRef = ref(database, 'users');
+        const snapshot = await get(usersRef);
+        
+        if (!snapshot.exists()) return {};
+        
+        const allUsers = snapshot.val();
+        const results = {};
+        
+        for (const userId in allUsers) {
+            const user = allUsers[userId];
+            
+            // تطبيق فلتر الرتبة إذا كان محدداً
+            if (rankFilter !== null && rankFilter !== '' && user.rank !== parseInt(rankFilter)) {
+                continue;
+            }
+            
+            // البحث بالاسم أو البريد الإلكتروني
+            const matchesSearch = searchTerm === '' || 
+                (user.name && user.name.includes(searchTerm)) || 
+                (user.email && user.email.includes(searchTerm));
+            
+            if (matchesSearch) {
+                results[userId] = user;
+            }
+        }
+        
+        return results;
+    } catch (error) {
+        console.error("Error searching users:", error);
+        return {};
+    }
+};
+
+// دالة لإضافة نقاط للمستخدم (للمشرفين فقط)
+const addPointsToUser = async (userId, pointsToAdd, adminId) => {
+    try {
+        // التحقق من أن المستخدم الذي يضيف النقاط هو مشرف
+        const isAdmin = await checkAdminStatus(adminId);
+        if (!isAdmin) {
+            throw new Error("ليست لديك صلاحية إضافة النقاط");
+        }
+        
+        const userRef = ref(database, 'users/' + userId);
+        const userSnapshot = await get(userRef);
+        
+        if (!userSnapshot.exists()) {
+            throw new Error("المستخدم غير موجود");
+        }
+        
+        const userData = userSnapshot.val();
+        const currentPoints = userData.points || 0;
+        const newPoints = currentPoints + pointsToAdd;
+        
+        // تحديث النقاط
+        await update(userRef, {
+            points: newPoints
+        });
+        
+        // تسجيل العملية في سجل المشرفين
+        const adminLogRef = ref(database, 'adminLogs/' + Date.now());
+        await set(adminLogRef, {
+            adminId: adminId,
+            userId: userId,
+            action: 'add_points',
+            points: pointsToAdd,
+            timestamp: new Date().toISOString()
+        });
+        
+        console.log(`تمت إضافة ${pointsToAdd} نقطة للمستخدم ${userId} بواسطة المشرف ${adminId}`);
+        
+        // التحقق من الترقية بعد إضافة النقاط
+        await checkPromotions(userId);
+        
+        return newPoints;
+    } catch (error) {
+        console.error("Error adding points to user:", error);
+        throw error;
+    }
+};
+
 // تصدير الكائنات لاستخدامها في ملفات أخرى
 export { 
   app, analytics, auth, database, storage,
