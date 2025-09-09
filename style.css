@@ -482,3 +482,140 @@ button:hover {
 .user-badge.level-9 { background: #b9f2ff; color: #212529; } /* ماسي */
 .user-badge.level-10 { background: #4a0c7a; color: white; } /* قائد */ 
 
+
+
+
+/* أنماط لوحة المشرفين */
+.admin-only { display: none; }
+
+.admin-controls {
+    margin-top: 20px;
+}
+
+.filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filters input, .filters select {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filters button {
+    width: auto;
+}
+
+.users-list {
+    margin-top: 20px;
+}
+
+.user-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: white;
+}
+
+.user-info h4 {
+    margin: 0 0 5px 0;
+    color: #333;
+}
+
+.user-info p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.select-user-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.select-user-btn:hover {
+    background: var(--secondary);
+}
+
+.user-details {
+    margin-top: 30px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+}
+
+.user-detail-card {
+    padding: 15px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.user-detail-card h4 {
+    margin: 0 0 10px 0;
+    color: var(--primary);
+}
+
+.user-detail-card p {
+    margin: 5px 0;
+    color: #555;
+}
+
+.admin-actions {
+    margin-top: 20px;
+}
+
+.admin-actions .form-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.admin-actions label {
+    margin: 0;
+    min-width: 100px;
+}
+
+.admin-actions input, .admin-actions select {
+    flex: 1;
+    min-width: 150px;
+    max-width: 200px;
+}
+
+.admin-actions button {
+    width: auto;
+}
+
+@media (max-width: 768px) {
+    .filters {
+        flex-direction: column;
+    }
+    
+    .user-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .admin-actions .form-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .admin-actions input, .admin-actions select {
+        max-width: 100%;
+    }
+  }
